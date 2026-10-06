@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Неактив — Amazing RP</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#172033;background:#f4f6fa}
+*{box-sizing:border-box}body{margin:0}.wrap{max-width:1000px;margin:0 auto;padding:28px 16px}
+header{background:#172033;color:white;border-radius:18px;padding:28px;margin-bottom:18px}
+h1{margin:0 0 7px;font-size:28px}.hero p{margin:0;color:#cbd3e1}.grid{display:grid;grid-template-columns:360px 1fr;gap:18px}
+.card{background:white;border:1px solid #e2e6ee;border-radius:16px;padding:20px;box-shadow:0 4px 18px #1720330d}
+h2{font-size:19px;margin:0 0 16px}label{display:block;font-size:14px;font-weight:650;margin:14px 0 7px}
+input,textarea{width:100%;padding:12px;border:1px solid #d7dce5;border-radius:10px;font:inherit;outline:none}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:9px}.time{border:1px solid #d7dce5;border-radius:11px;padding:12px;cursor:pointer;text-align:center;font-weight:700}
+.time input{width:auto;margin-right:6px}.time.on{background:#eef1ff;border-color:#536dfe}
+button{border:0;border-radius:11px;padding:13px;margin-top:15px;background:#536dfe;color:white;font-weight:750;font-size:15px;cursor:pointer}
+.hint{font-size:12px;color:#7a8496;margin-top:9px}.status{font-size:12px;text-align:right;color:#4caf50;margin:0 0 10px}
+.status.err{color:#e53935}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:15px}
+.stat{background:#f7f8fb;border-radius:11px;padding:12px}.stat b{display:block;font-size:22px}.stat span{font-size:12px;color:#6e7788}
+.table-scroll{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #edf0f4;font-size:14px}
+th{font-size:12px;color:#70798a}.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.red{background:#ffe8e8;color:#b42318}.gray{background:#eef0f4;color:#657085}.empty{text-align:center;padding:35px;color:#7a8496}
+.del{width:auto;margin:0;padding:7px 9px;background:#eef0f4;color:#4b5565;font-size:12px}
+.admin{margin-top:10px;background:#172033}.adminbox{display:none;margin-top:10px}.adminbox button{margin-top:8px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding:15px}.card{padding:16px}.table{min-width:650px}}
+</style>
+</head>
+<body><div class="wrap">
+<header class="hero"><h1>Неактив — Amazing RP</h1><p>Подача неактива на поезд 15:30 / 19:30</p></header>
+<div class="grid">
+<section class="card"><h2>📝 Подать неактив</h2>
+<form id="form">
+<label for="nick">Игровой никнейм</label><input id="nick" maxlength="32" required placeholder="Nick_Name">
+<label>На каком поезде не будете?</label>
+<div class="times"><label class="time"><input type="checkbox" value="15:30">15:30</label><label class="time"><input type="checkbox" value="19:30">19:30</label></div>
+<label for="reason">Причина <span style="font-weight:400;color:#8a93a2">(необязательно)</span></label>
+<textarea id="reason" rows="3" maxlength="180" placeholder="По личным причинам..."></textarea>
+<button type="submit">Подать неактив</button><div class="hint">Заявка появится у всех пользователей сайта.</div>
+</form>
+<button class="admin" id="adminBtn">🔐 Администратор</button>
+<div class="adminbox" id="adminbox"><input id="adminPass" type="password" placeholder="Пароль администратора"><button id="login">Войти</button></div>
+</section>
+<section class="card"><h2>📋 Заявки на неактив</h2><p id="status" class="status">Подключение…</p>
+<div class="stats"><div class="stat"><b id="total">0</b><span>всего</span></div><div class="stat"><b id="t1530">0</b><span>на 15:30</span></div><div class="stat"><b id="t1930">0</b><span>на 19:30</span></div></div>
+<div class="table-scroll"><table><thead><tr><th>Никнейм</th><th>15:30</th><th>19:30</th><th>Причина</th><th>Дата</th><th></th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty">Пока заявок нет.</div></div>
+</section></div></div>
+<script>
+const API='/.netlify/functions/neaktiv'; let items=[], admin=false;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function status(t,e=false){$('#status').textContent=t;$('#status').className='status'+(e?' err':'')}
+function render(){
+ $('#total').textContent=items.length;$('#t1530').textContent=items.filter(x=>x.t1530).length;$('#t1930').textContent=items.filter(x=>x.t1930).length;
+ $('#empty').style.display=items.length?'none':'block';
+ $('#rows').innerHTML=items.map(x=>`<tr><td><b>${esc(x.nick)}</b></td><td>${x.t1530?'<span class="badge red">Не будет</span>':'<span class="badge gray">—</span>'}</td><td>${x.t1930?'<span class="badge red">Не будет</span>':'<span class="badge gray">—</span>'}</td><td>${esc(x.reason||'—')}</td><td>${esc(x.date||'')}</td><td>${admin?`<button class="del" data-del="${x.id}">Удалить</button>`:''}</td></tr>`).join('');
+}
+async function load(){try{let r=await fetch(API);let j=await r.json();if(!r.ok)throw Error(j.error||('HTTP '+r.status));items=j.items||[];status('🟢 Онлайн — общая база');render()}catch(e){status('Ошибка подключения: '+e.message,true)}}
+document.querySelectorAll('.time input').forEach(i=>i.onchange=()=>i.closest('.time').classList.toggle('on',i.checked));
+$('#form').onsubmit=async e=>{e.preventDefault();let nick=$('#nick').value.trim(), c=[...document.querySelectorAll('.time input:checked')].map(x=>x.value);if(!nick)return;if(!c.length)return alert('Выберите хотя бы одно время.');
+let body={nick,t1530:c.includes('15:30'),t1930:c.includes('19:30'),reason:$('#reason').value.trim()};try{let r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});let j=await r.json();if(!r.ok)throw Error(j.error||('HTTP '+r.status));e.target.reset();document.querySelectorAll('.time').forEach(x=>x.classList.remove('on'));await load()}catch(e){alert('Ошибка подключения: '+e.message)}};
+$('#rows').onclick=async e=>{let b=e.target.closest('[data-del]');if(!b||!admin)return;if(!confirm('Удалить заявку?'))return;try{let r=await fetch(API+'?id='+encodeURIComponent(b.dataset.del),{method:'DELETE'});let j=await r.json();if(!r.ok)throw Error(j.error||('HTTP '+r.status));load()}catch(e){alert('Ошибка: '+e.message)}};
+$('#adminBtn').onclick=()=>$('#adminbox').style.display=$('#adminbox').style.display==='block'?'none':'block';
+$('#login').onclick=async()=>{let p=$('#adminPass').value;try{let r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',password:p})});let j=await r.json();if(!r.ok||!j.ok)throw Error(j.error||'Неверный пароль');admin=true;$('#adminbox').style.display='none';render();alert('Вы вошли как администратор')}catch(e){alert(e.message)}};
+load();setInterval(load,5000);
+</script></body></html>
